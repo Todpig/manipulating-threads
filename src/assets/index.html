@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+
+      h1 {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      #dataForm {
+        max-width: 500px;
+        margin: 0 auto;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+
+      #dataForm label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: bold;
+      }
+
+      #dataForm input[type="number"] {
+        width: calc(100% - 22px);
+        padding: 10px;
+        margin-bottom: 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-sizing: border-box;
+      }
+
+      #dataForm button {
+        padding: 10px 20px;
+        background-color: #28a745;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+
+      #dataForm button:hover {
+        background-color: #218838;
+      }
+
+      canvas {
+        max-width: 100%;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Dashboard</h1>
+    <form id="dataForm">
+      <label for="count_threads">Quantidade de Threads:</label>
+      <input
+        type="number"
+        id="count_threads"
+        name="count_threads"
+        required
+      /><br /><br />
+
+      <label for="size">Tamanho do array:</label>
+      <input type="number" id="size" name="size" required /><br /><br />
+
+      <button type="submit">Adicionar</button>
+    </form>
+
+    <canvas id="meuGrafico"></canvas>
+
+    <script>
+      document
+        .getElementById("dataForm")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+
+          const countThreads = parseInt(
+            document.getElementById("count_threads").value,
+            10
+          );
+          const size = parseInt(document.getElementById("size").value, 10);
+
+          fetch("http://localhost:7000/values", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ count_threads: countThreads, size: size }),
+          })
+            .then((response) => response.json())
+            .then(() => {
+              updateChart();
+            })
+            .catch((error) =>
+              console.error("Erro ao adicionar os dados:", error)
+            );
+        });
+
+      function updateChart() {
+        fetch("http://localhost:7000/values")
+          .then((response) => response.json())
+          .then((data) => {
+            const values = data.res;
+            const sizes = [...new Set(values.map((d) => d.size))].sort(
+              (a, b) => a - b
+            );
+            const runtimeWithThreads = sizes.map((size) => {
+              const item = values.find((d) => d.size === size && d.has_threads);
+              return item ? item.runtime : null;
+            });
+
+            const runtimeWithoutThreads = sizes.map((size) => {
+              const item = values.find(
+                (d) => d.size === size && !d.has_threads
+              );
+              return item ? item.runtime : null;
+            });
+
+            var ctx = document.getElementById("meuGrafico").getContext("2d");
+            var meuGrafico = new Chart(ctx, {
+              type: "bar",
+              data: {
+                labels: sizes,
+                datasets: [
+                  {
+                    label: "Runtime com Threads",
+                    data: runtimeWithThreads,
+                    borderColor: "rgba(54, 162, 235, 1)",
+                    backgroundColor: "rgba(54, 162, 235, 0.2)",
+                    borderWidth: 1,
+                    spanGaps: true,
+                  },
+                  {
+                    label: "Runtime sem Threads",
+                    data: runtimeWithoutThreads,
+                    borderColor: "rgba(255, 99, 132, 1)",
+                    backgroundColor: "rgba(255, 99, 132, 0.2)",
+                    borderWidth: 1,
+                    spanGaps: true,
+                  },
+                ],
+              },
+              options: {
+                scales: {
+                  x: {
+                    title: {
+                      display: true,
+                      text: "Tamanho (Size)",
+                    },
+                    beginAtZero: true,
+                  },
+                  y: {
+                    title: {
+                      display: true,
+                      text: "Tempo de Execução (Runtime) em sengundos",
+                    },
+                  },
+                },
+              },
+            });
+          })
+          .catch((error) => console.error("Erro ao buscar os dados:", error));
+      }
+      updateChart();
+    </script>
+  </body>
+</html>
