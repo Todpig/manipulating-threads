@@ -27,7 +27,10 @@ routes.get("/src/assets/", (req, res) => {
 routes.get("/values", async (req, res) => {
   try {
     const values = await get_values();
-    return res.status(200).json({ count: values.length, res: values });
+    return res.status(200).json({
+      count: values.length,
+      res: values.sort((a, b) => a.size - b.size),
+    });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -66,6 +69,7 @@ routes.post("/values", async (req, res) => {
         new Promise((resolve, reject) => {
           worker.on("message", (message) => {
             totalRuntime += message.runtime;
+            console.log(message);
             resolve(message);
           });
           worker.on("error", reject);
@@ -79,7 +83,12 @@ routes.post("/values", async (req, res) => {
     }
 
     await Promise.all(workerPromises);
-    await insert_values({ size, has_threads, count_threads, runtime: totalRuntime });
+    await insert_values({
+      size,
+      has_threads,
+      count_threads,
+      runtime: totalRuntime,
+    });
 
     return res.status(201).json({ success: true });
   } catch (err) {

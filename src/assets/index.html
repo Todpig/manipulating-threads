@@ -7,6 +7,10 @@
       body {
         font-family: Arial, sans-serif;
         margin: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
       }
 
       h1 {
@@ -15,12 +19,16 @@
       }
 
       #dataForm {
-        max-width: 500px;
+        max-width: 100%;
         margin: 0 auto;
-        padding: 20px;
+        padding: 32px;
         border: 1px solid #ddd;
         border-radius: 8px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
       }
 
       #dataForm label {
@@ -53,8 +61,12 @@
       }
 
       canvas {
-        max-width: 100%;
+        max-width: 80%;
         margin-top: 20px;
+      }
+      .chart-container {
+        width: 1000px;
+        height: 600px;
       }
     </style>
   </head>
@@ -75,8 +87,9 @@
       <button type="submit">Adicionar</button>
     </form>
 
-    <canvas id="meuGrafico"></canvas>
-
+    <div class="chart-container">
+      <canvas id="graph"></canvas>
+    </div>
     <script>
       document
         .getElementById("dataForm")
@@ -110,42 +123,49 @@
           .then((response) => response.json())
           .then((data) => {
             const values = data.res;
-            const sizes = [...new Set(values.map((d) => d.size))].sort(
-              (a, b) => a - b
-            );
-            const runtimeWithThreads = sizes.map((size) => {
-              const item = values.find((d) => d.size === size && d.has_threads);
-              return item ? item.runtime : null;
-            });
 
-            const runtimeWithoutThreads = sizes.map((size) => {
-              const item = values.find(
-                (d) => d.size === size && !d.has_threads
-              );
-              return item ? item.runtime : null;
-            });
+            const runtimeWithThreads = values
+              .filter((data) => data.has_threads === 1)
+              .map((data) => data.runtime);
 
-            var ctx = document.getElementById("meuGrafico").getContext("2d");
-            var meuGrafico = new Chart(ctx, {
-              type: "bar",
+            const runtimeWithoutThreads = values
+              .filter((data) => data.has_threads === 0)
+              .map((data) => data.runtime);
+
+            const countWithThreads = values
+              .filter((data) => data.has_threads === 1)
+              .map((data) => data.count_threads);
+
+            const countWithoutThreads = values
+              .filter((data) => data.has_threads === 0)
+              .map((data) => data.count_threads);
+
+            var ctx = document.getElementById("graph").getContext("2d");
+            var graph = new Chart(ctx, {
+              type: "scatter",
               data: {
-                labels: sizes,
                 datasets: [
                   {
                     label: "Runtime com Threads",
-                    data: runtimeWithThreads,
+                    data: runtimeWithThreads.map((runtime, index) => ({
+                      x: runtime,
+                      y: countWithThreads[index],
+                    })),
                     borderColor: "rgba(54, 162, 235, 1)",
                     backgroundColor: "rgba(54, 162, 235, 0.2)",
                     borderWidth: 1,
-                    spanGaps: true,
+                    showLine: true,
                   },
                   {
                     label: "Runtime sem Threads",
-                    data: runtimeWithoutThreads,
+                    data: runtimeWithoutThreads.map((runtime, index) => ({
+                      x: runtime,
+                      y: countWithoutThreads[index],
+                    })),
                     borderColor: "rgba(255, 99, 132, 1)",
                     backgroundColor: "rgba(255, 99, 132, 0.2)",
                     borderWidth: 1,
-                    spanGaps: true,
+                    showLine: true,
                   },
                 ],
               },
@@ -154,15 +174,16 @@
                   x: {
                     title: {
                       display: true,
-                      text: "Tamanho (Size)",
+                      text: "Tempo de Execução em segundos (s)",
                     },
                     beginAtZero: true,
                   },
                   y: {
                     title: {
                       display: true,
-                      text: "Tempo de Execução (Runtime) em sengundos",
+                      text: "Quantidade de threads",
                     },
+                    beginAtZero: true,
                   },
                 },
               },
